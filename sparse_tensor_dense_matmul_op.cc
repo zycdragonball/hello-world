@@ -1,8 +1,11 @@
 /* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,12 +17,12 @@ limitations under the License.
 
 #define EIGEN_USE_THREADS
 
-#include "sparse_tensor_dense_matmul_op.h"
+#include "tensorflow/core/kernels/sparse_tensor_dense_matmul_op.h"
 
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/kernels/bounds_check.h"
-#include "fill_functor.h"
+#include "tensorflow/core/kernels/fill_functor.h"
 
 namespace tensorflow {
 
@@ -152,16 +155,16 @@ class SparseTensorDenseMatMulOp : public OpKernel {
     }
 
     switch (ndim) {
-#define MAYBE_ADJOINT(ADJ_A, ADJ_B, N)                                           \
-  if (adjoint_a_ == ADJ_A && adjoint_b_ == ADJ_B) {                           \
-    Status functor_status = functor::SparseTensorDenseMatMulFunctor<          \
-        Device, T, Tindices, ADJ_A, ADJ_B, N>::Compute(   \
-            ctx->eigen_device<Device>(),        \
-            out->tensor<T, N>(),                   \
-            a_indices->matrix<Tindices>(),      \
-            a_values->vec<T>(), b->tensor<T, N>(), \
-            scratch.vec<T>());                  \
-    OP_REQUIRES_OK(ctx, functor_status);                                     \
+#define MAYBE_ADJOINT(ADJ_A, ADJ_B, N)                               \
+  if (adjoint_a_ == ADJ_A && adjoint_b_ == ADJ_B) {                  \
+    Status functor_status = functor::SparseTensorDenseMatMulFunctor< \
+        Device, T, Tindices, ADJ_A, ADJ_B, N>::Compute(              \
+            ctx->eigen_device<Device>(),                             \
+            out->tensor<T, N>(),                                     \
+            a_indices->matrix<Tindices>(),                           \
+            a_values->vec<T>(), b->tensor<T, N>(),                   \
+            scratch.vec<T>());                                       \
+    OP_REQUIRES_OK(ctx, functor_status);                             \
   }
   
 #define NDIMS_CASE(N)                 \
@@ -184,7 +187,6 @@ class SparseTensorDenseMatMulOp : public OpKernel {
 
 #undef NDIMS_CASE
 #undef MAYBE_ADJOINT
-
     }
   }
 
@@ -217,12 +219,13 @@ REGISTER_KERNELS_CPU(complex128);
 namespace functor {
 #define DECLARE_GPU_SPEC(T, Tindices, ADJ_A, ADJ_B, NDIM)                      \
   template <>                                                                  \
-  Status SparseTensorDenseMatMulFunctor<GPUDevice, T, Tindices, ADJ_A,           \
-                    ADJ_B, NDIM>::Compute(                                       \
+  Status SparseTensorDenseMatMulFunctor<GPUDevice, T, Tindices, ADJ_A,         \
+                                        ADJ_B, NDIM>::Compute(                 \
       const GPUDevice& d, typename TTypes<T, NDIM>::Tensor out,                \
       typename TTypes<Tindices>::ConstMatrix a_indices,                        \
       typename TTypes<T>::ConstVec a_values,                                   \
-      typename TTypes<T, NDIM>::ConstTensor b, typename TTypes<T>::Vec scratch);     \
+      typename TTypes<T, NDIM>::ConstTensor b,                                 \
+      typename TTypes<T>::Vec scratch);                                        \
   extern template struct SparseTensorDenseMatMulFunctor<GPUDevice, T, Tindices,\
                                                         ADJ_A, ADJ_B, NDIM>;
 
@@ -305,7 +308,7 @@ struct SparseTensorDenseMatMulFunctor<CPUDevice, T, Tindices, ADJ_A, ADJ_B, NDIM
     if (rhs_right < kNumVectorize) {
       // Disable vectorization if the RHS of output is too small
       auto maybe_adjoint_b = MaybeAdjoint<decltype(b), ADJ_B, NDIM>(b);
-      
+
       for (std::size_t i = 0; i < nnz; ++i) {
         const Tindices m = internal::SubtleMustCopy(a_indices(i, lhs_index_a));
         const Tindices k = internal::SubtleMustCopy(a_indices(i, rhs_index_a));
@@ -316,7 +319,6 @@ struct SparseTensorDenseMatMulFunctor<CPUDevice, T, Tindices, ADJ_A, ADJ_B, NDIM
           return MOutOfBoundsError(m, i, lhs_index_a, out.dimension(NDIM - 2));
         }
         const T a_value = ADJ_A ? MaybeConj(a_values(i)) : a_values(i);
-        
         Eigen::array<Eigen::Index, NDIM> indices;
         for (int j = 0; j < NDIM - 2; ++j) {
           indices[j] = a_indices(i, j);

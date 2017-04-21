@@ -1,8 +1,11 @@
 /* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,7 +17,7 @@ limitations under the License.
 
 #define EIGEN_USE_GPU
 
-#include "sparse_tensor_dense_matmul_op.h"
+#include "tensorflow/core/kernels/sparse_tensor_dense_matmul_op.h"
 
 #include "tensorflow/core/framework/register_types.h"
 
@@ -96,12 +99,13 @@ namespace functor {
 
 template <typename T, typename Tindices, bool ADJ_A, bool ADJ_B, int NDIM>
 struct SparseTensorDenseMatMulFunctor<GPUDevice, T, Tindices, ADJ_A, ADJ_B, NDIM> {
-  static EIGEN_ALWAYS_INLINE Status
-  Compute(const GPUDevice& d, typename TTypes<T, NDIM>::Tensor out,
-          typename TTypes<Tindices>::ConstMatrix a_indices,
-          typename TTypes<T>::ConstVec a_values,
-          typename TTypes<T, NDIM>::ConstTensor b,
-          typename TTypes<T>::Vec scratch) {
+  static EIGEN_ALWAYS_INLINE Status Compute(
+      const GPUDevice& d,
+      typename TTypes<T, NDIM>::Tensor out,
+      typename TTypes<Tindices>::ConstMatrix a_indices,
+      typename TTypes<T>::ConstVec a_values,
+      typename TTypes<T, NDIM>::ConstTensor b,
+      typename TTypes<T>::Vec scratch) {
     generator::SparseTensorDenseMatMulGPUGenerator<T, Tindices, ADJ_A, ADJ_B, NDIM>
         sparse_tensor_dense_matmul_generator(To32Bit(out), To32Bit(a_indices),
                                              To32Bit(a_values), To32Bit(b));
@@ -121,7 +125,6 @@ struct SparseTensorDenseMatMulFunctor<GPUDevice, T, Tindices, ADJ_A, ADJ_B, NDIM
     n_by_1.set(0, n);
     Eigen::IndexList<Eigen::type2index<0> > reduce_on_rows;
 #endif
-
 
     // How this works: the generator iterates over (j, ix) where j
     // iterates from 0 .. n - 1 and ix iterates from
@@ -148,7 +151,7 @@ struct SparseTensorDenseMatMulFunctor<GPUDevice, T, Tindices, ADJ_A, ADJ_B, NDIM
             .broadcast(n_by_1)
             .generate(sparse_tensor_dense_matmul_generator)
             .sum(reduce_on_rows);
-            
+
     return Status::OK();
   }
 };
@@ -175,7 +178,6 @@ HANDLE_DIM(4);
 HANDLE_DIM(5);
 
 #undef HANDLE_DIM
-  
 #undef DEFINE
 
 }  // end namespace tensorflow
